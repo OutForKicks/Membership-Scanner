@@ -1,24 +1,17 @@
-const statusDiv =
-  document.getElementById("status");
-
-const scanCountDiv =
-  document.getElementById("scanCount");
-
-const exportBtn =
-  document.getElementById("exportBtn");
+const statusDiv = document.getElementById("status");
+const scanCountDiv = document.getElementById("scanCount");
+const exportBtn = document.getElementById("exportBtn");
 
 let attendance = [];
+let html5QrCode;
 
-function setStatus(message, type) {
-
+function setStatus(msg, type) {
   statusDiv.className = type;
-  statusDiv.innerHTML = message;
+  statusDiv.innerHTML = msg;
 }
 
 function updateCount() {
-
-  scanCountDiv.innerHTML =
-    `${attendance.length} CHECK-INS`;
+  scanCountDiv.innerHTML = `${attendance.length} CHECK-INS`;
 }
 
 function onScanSuccess(decodedText) {
@@ -27,114 +20,104 @@ function onScanSuccess(decodedText) {
     document.getElementById("eventSelect").value;
 
   if (!eventName) {
-
-    setStatus(
-      "SELECT EVENT",
-      "error"
-    );
-
+    setStatus("SELECT EVENT", "error");
     return;
   }
 
-  const alreadyExists =
-    attendance.some(
-      entry =>
-        entry.memberId === decodedText &&
-        entry.event === eventName
-    );
+  const exists = attendance.some(
+    x => x.memberId === decodedText && x.event === eventName
+  );
 
-  if (alreadyExists) {
-
-    setStatus(
-      "ALREADY CHECKED IN",
-      "error"
-    );
-
+  if (exists) {
+    setStatus("ALREADY CHECKED IN", "error");
     return;
   }
 
-  const entry = {
-
-    timestamp:
-      new Date().toLocaleString(),
-
-    memberId:
-      decodedText,
-
-    event:
-      eventName
-  };
-
-  attendance.push(entry);
+  attendance.push({
+    timestamp: new Date().toLocaleString(),
+    memberId: decodedText,
+    event: eventName
+  });
 
   updateCount();
 
-  setStatus(
-    `✅ ${decodedText}`,
-    "success"
-  );
+  setStatus(`✅ ${decodedText}`, "success");
 
   navigator.vibrate?.(120);
 }
 
-const scanner =
-  new Html5QrcodeScanner(
-    "reader",
-    {
-      fps: 10,
-      qrbox: 250
-    }
-  );
+/**
+ * FORCE BACK CAMERA START
+ */
+function startScanner() {
 
-scanner.render(onScanSuccess);
+  html5QrCode = new Html5Qrcode("reader");
 
-exportBtn.addEventListener(
-  "click",
-  () => {
+  Html5Qrcode.getCameras()
+    .then(devices => {
 
-    if (attendance.length === 0) {
+      if (!devices || devices.length === 0) {
+        setStatus("NO CAMERA FOUND", "error");
+        return;
+      }
 
-      setStatus(
-        "NO DATA TO EXPORT",
-        "error"
+      // Try to find back camera
+      let backCamera = devices.find(d =>
+        d.label.toLowerCase().includes("back") ||
+        d.label.toLowerCase().includes("rear") ||
+        d.label.toLowerCase().includes("environment")
       );
 
-      return;
-    }
+      // fallback if labels are hidden (iOS often hides them)
+      if (!backCamera) {
+        backCamera = devices[devices.length - 1];
+      }
 
-    let csv =
-      "Timestamp,Member ID,Event\n";
-
-    attendance.forEach(row => {
-
-      csv +=
-        `${row.timestamp},${row.memberId},${row.event}\n`;
+      html5QrCode.start(
+        backCamera.id,
+        {
+          fps: 10,
+          qrbox: 250
+        },
+        onScanSuccess
+      )
+      .then(() => {
+        setStatus("SCANNING...", "neutral");
+      })
+      .catch(err => {
+        console.error(err);
+        setStatus("CAMERA ERROR", "error");
+      });
     });
+}
 
-    const blob =
-      new Blob(
-        [csv],
-        { type: "text/csv" }
-      );
+startScanner();
 
-    const url =
-      window.URL.createObjectURL(blob);
+/**
+ * EXPORT CSV
+ */
+exportBtn.addEventListener("click", () => {
 
-    const a =
-      document.createElement("a");
-
-    a.href = url;
-
-    a.download =
-      "ofk-attendance.csv";
-
-    a.click();
-
-    window.URL.revokeObjectURL(url);
-
-    setStatus(
-      "CSV EXPORTED",
-      "success"
-    );
+  if (attendance.length === 0) {
+    setStatus("NO DATA", "error");
+    return;
   }
-);
+
+  let csv = "Timestamp,Member ID,Event\n";
+
+  attendance.forEach(r => {
+    csv += `${r.timestamp},${r.memberId},${r.event}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "ofk-attendance.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+
+  setStatus("EXPORTED", "success");
+});
