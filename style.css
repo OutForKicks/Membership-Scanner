@@ -1,0 +1,175 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  background:
+    linear-gradient(
+      rgba(10, 26, 99, 0.82),
+      rgba(10, 26, 99, 0.92)
+    ),
+    url("assets/bg.jpg");
+
+  background-size: cover;
+  background-position: center;
+
+  color: white;
+
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+
+  width: 100%;
+  max-width: 500px;
+
+  padding: 28px;
+
+  text-align: center;
+
+  backdrop-filter: blur(8px);
+
+  background: rgba(0,0,0,0.28);
+
+  border:
+    2px solid rgba(73, 237, 199, 0.2);
+
+  border-radius: 24px;
+
+  box-shadow:
+    0 10px 40px rgba(0,0,0,0.45);
+}
+
+.logo {
+  width: 120px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0 0 24px 0;
+
+  font-size: 42px;
+  font-weight: 700;
+
+  letter-spacing: 2px;
+
+  color: #ffffff;
+
+  text-transform: uppercase;
+}
+
+input {
+
+  width: 100%;
+
+  padding: 16px;
+
+  margin-bottom: 24px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: rgba(255,255,255,0.1);
+
+  color: white;
+
+  font-size: 16px;
+
+  text-transform: uppercase;
+
+  outline: none;
+
+  border:
+    2px solid rgba(255,255,255,0.08);
+
+  transition: 0.2s ease;
+}
+
+input:focus {
+
+  border:
+    2px solid #49edc7;
+
+  background: rgba(255,255,255,0.16);
+}
+
+input::placeholder {
+  color: rgba(255,255,255,0.55);
+}
+
+#reader {
+
+  overflow: hidden;
+
+  border-radius: 20px;
+
+  border:
+    3px solid #0a9acf;
+
+  background: white;
+}
+
+#status {
+
+  margin-top: 24px;
+
+  min-height: 70px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 24px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+
+  border-radius: 18px;
+
+  transition: 0.25s ease;
+
+  padding: 16px;
+}
+
+.success {
+
+  background: rgba(73, 237, 199, 0.15);
+
+  color: #49edc7;
+
+  border:
+    2px solid rgba(73, 237, 199, 0.4);
+}
+
+.error {
+
+  background: rgba(255, 80, 80, 0.12);
+
+  color: #ff8080;
+
+  border:
+    2px solid rgba(255, 80, 80, 0.3);
+}
+
+.neutral {
+
+  color: rgba(255,255,255,0.65);
+}
+
+@media (max-width: 600px) {
+
+  .container {
+    margin: 18px;
+    padding: 22px;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+}
