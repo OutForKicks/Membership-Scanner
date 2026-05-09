@@ -14,6 +14,9 @@ function updateCount() {
   scanCountDiv.innerHTML = `${attendance.length} CHECK-INS`;
 }
 
+/**
+ * Handle scan result
+ */
 function onScanSuccess(decodedText) {
 
   const eventName =
@@ -47,54 +50,62 @@ function onScanSuccess(decodedText) {
 }
 
 /**
- * FORCE BACK CAMERA START
+ * FORCE BACK CAMERA (FIX)
  */
 function startScanner() {
 
   html5QrCode = new Html5Qrcode("reader");
 
-  Html5Qrcode.getCameras()
-    .then(devices => {
+  const config = {
+    fps: 10,
+    qrbox: 250
+  };
 
-      if (!devices || devices.length === 0) {
-        setStatus("NO CAMERA FOUND", "error");
-        return;
-      }
+  /**
+   * STEP 1:
+   * Strongly request BACK CAMERA
+   */
+  const cameraConstraints = {
+    facingMode: { exact: "environment" }
+  };
 
-      // Try to find back camera
-      let backCamera = devices.find(d =>
-        d.label.toLowerCase().includes("back") ||
-        d.label.toLowerCase().includes("rear") ||
-        d.label.toLowerCase().includes("environment")
-      );
+  html5QrCode.start(
+    cameraConstraints,
+    config,
+    onScanSuccess
+  )
+  .then(() => {
+    setStatus("SCANNING...", "neutral");
+  })
 
-      // fallback if labels are hidden (iOS often hides them)
-      if (!backCamera) {
-        backCamera = devices[devices.length - 1];
-      }
+  /**
+   * STEP 2: fallback for iOS/Safari restrictions
+   */
+  .catch(err => {
 
-      html5QrCode.start(
-        backCamera.id,
-        {
-          fps: 10,
-          qrbox: 250
-        },
-        onScanSuccess
-      )
-      .then(() => {
-        setStatus("SCANNING...", "neutral");
-      })
-      .catch(err => {
-        console.error(err);
-        setStatus("CAMERA ERROR", "error");
-      });
+    console.warn("Exact back camera failed, retrying fallback...", err);
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      onScanSuccess
+    )
+    .then(() => {
+      setStatus("SCANNING...", "neutral");
+    })
+
+    .catch(err2 => {
+      console.error(err2);
+      setStatus("CAMERA ERROR", "error");
     });
+
+  });
 }
 
 startScanner();
 
 /**
- * EXPORT CSV
+ * EXPORT CSV (LOCAL SPREADSHEET OUTPUT)
  */
 exportBtn.addEventListener("click", () => {
 
@@ -110,6 +121,7 @@ exportBtn.addEventListener("click", () => {
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
+
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
