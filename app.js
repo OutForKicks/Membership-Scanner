@@ -5,86 +5,132 @@ const exportBtn = document.getElementById("exportBtn");
 let attendance = [];
 let html5QrCode;
 
+/**
+ * STATUS UI
+ */
 function setStatus(message, type) {
   statusDiv.className = type;
   statusDiv.innerHTML = message;
 }
 
+/**
+ * UPDATE COUNT
+ */
 function updateCount() {
-  scanCountDiv.innerHTML = `${attendance.length} CHECK-INS`;
+  scanCountDiv.innerHTML =
+    `${attendance.length} CHECK-INS`;
 }
 
-function slugify(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
+/**
+ * PARSE MEMBER FROM QR
+ *
+ * Expected QR format:
+ * https://outforkicks.github.io/2026-OFK-Member/?MEMBER=AARON|GILL|SOLVE
+ */
 function findMember(decodedText) {
-  let memberSlug = "";
 
   try {
+
     const url = new URL(decodedText);
-    memberSlug = url.searchParams.get("member");
+
+    const rawMember =
+      url.searchParams.get("member") ||
+      url.searchParams.get("MEMBER");
+
+    if (!rawMember) {
+      return null;
+    }
+
+    const parts =
+      decodeURIComponent(rawMember)
+      .split("|");
+
+    if (parts.length < 3) {
+      return null;
+    }
+
+    return {
+      firstName: parts[0],
+      surname: parts[1],
+      teamName: parts[2]
+    };
+
   } catch {
+
     return null;
   }
-
-  if (!memberSlug) {
-    return null;
-  }
-
-  return MEMBERS.find(member => {
-    const fullSlug = slugify(`${member.firstName}-${member.surname}`);
-    return fullSlug === memberSlug;
-  });
 }
 
+/**
+ * HANDLE QR SCAN
+ */
 function onScanSuccess(decodedText) {
-  const eventName = document.getElementById("eventSelect").value;
+
+  const eventName =
+    document.getElementById("eventSelect").value;
 
   if (!eventName) {
-    setStatus("SELECT EVENT", "error");
+
+    setStatus(
+      "SELECT EVENT",
+      "error"
+    );
+
     return;
   }
 
-  const member = findMember(decodedText);
+  const member =
+    findMember(decodedText);
 
   if (!member) {
 
-  console.log(decodedText);
+    setStatus(
+      "INVALID MEMBER QR",
+      "error"
+    );
 
-  setStatus(
-    decodedText,
-    "error"
-  );
+    console.log(decodedText);
 
-  return;
-}
+    return;
+  }
 
-  const fullName = `${member.firstName} ${member.surname}`;
+  const fullName =
+    `${member.firstName} ${member.surname}`;
 
-  const exists = attendance.some(entry =>
-    entry.firstName === member.firstName &&
-    entry.surname === member.surname &&
-    entry.event === eventName
-  );
+  const exists =
+    attendance.some(entry =>
+
+      entry.firstName === member.firstName &&
+      entry.surname === member.surname &&
+      entry.event === eventName
+    );
 
   if (exists) {
-    setStatus(`ALREADY CHECKED IN<br>${fullName}`, "error");
+
+    setStatus(
+      `ALREADY CHECKED IN<br>${fullName}`,
+      "error"
+    );
+
     return;
   }
 
   attendance.push({
-    timestamp: new Date().toLocaleString(),
-    firstName: member.firstName,
-    surname: member.surname,
-    teamName: member.teamName,
-    event: eventName
+
+    timestamp:
+      new Date().toLocaleString(),
+
+    firstName:
+      member.firstName,
+
+    surname:
+      member.surname,
+
+    teamName:
+      member.teamName,
+
+    event:
+      eventName
   });
 
   updateCount();
@@ -97,8 +143,14 @@ function onScanSuccess(decodedText) {
   navigator.vibrate?.(120);
 }
 
+/**
+ * START SCANNER
+ * FORCE BACK CAMERA
+ */
 function startScanner() {
-  html5QrCode = new Html5Qrcode("reader");
+
+  html5QrCode =
+    new Html5Qrcode("reader");
 
   const config = {
     fps: 10,
@@ -106,52 +158,111 @@ function startScanner() {
   };
 
   html5QrCode.start(
-    { facingMode: { exact: "environment" } },
+
+    {
+      facingMode: {
+        exact: "environment"
+      }
+    },
+
     config,
+
     onScanSuccess
   )
+
   .then(() => {
-    setStatus("SCANNING...", "neutral");
+
+    setStatus(
+      "SCANNING...",
+      "neutral"
+    );
   })
+
   .catch(() => {
+
     html5QrCode.start(
-      { facingMode: "environment" },
+
+      {
+        facingMode: "environment"
+      },
+
       config,
+
       onScanSuccess
     )
+
     .then(() => {
-      setStatus("SCANNING...", "neutral");
+
+      setStatus(
+        "SCANNING...",
+        "neutral"
+      );
     })
+
     .catch(error => {
+
       console.error(error);
-      setStatus("CAMERA ERROR", "error");
+
+      setStatus(
+        "CAMERA ERROR",
+        "error"
+      );
     });
   });
 }
 
 startScanner();
 
-exportBtn.addEventListener("click", () => {
-  if (attendance.length === 0) {
-    setStatus("NO DATA", "error");
-    return;
+/**
+ * EXPORT CSV
+ */
+exportBtn.addEventListener(
+  "click",
+  () => {
+
+    if (attendance.length === 0) {
+
+      setStatus(
+        "NO DATA",
+        "error"
+      );
+
+      return;
+    }
+
+    let csv =
+      "Timestamp,First Name,Surname,Team,Event\n";
+
+    attendance.forEach(row => {
+
+      csv +=
+        `"${row.timestamp}","${row.firstName}","${row.surname}","${row.teamName}","${row.event}"\n`;
+    });
+
+    const blob =
+      new Blob(
+        [csv],
+        { type: "text/csv" }
+      );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const a =
+      document.createElement("a");
+
+    a.href = url;
+
+    a.download =
+      "ofk-attendance.csv";
+
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    setStatus(
+      "EXPORTED",
+      "success"
+    );
   }
-
-  let csv = "Timestamp,First Name,Surname,Team,Event\n";
-
-  attendance.forEach(row => {
-    csv += `"${row.timestamp}","${row.firstName}","${row.surname}","${row.teamName}","${row.event}"\n`;
-  });
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "ofk-attendance.csv";
-  a.click();
-
-  URL.revokeObjectURL(url);
-
-  setStatus("EXPORTED", "success");
-});
+);
