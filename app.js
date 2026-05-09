@@ -5,55 +5,92 @@ const exportBtn = document.getElementById("exportBtn");
 let attendance = [];
 let html5QrCode;
 
-function setStatus(msg, type) {
+function setStatus(message, type) {
   statusDiv.className = type;
-  statusDiv.innerHTML = msg;
+  statusDiv.innerHTML = message;
 }
 
 function updateCount() {
   scanCountDiv.innerHTML = `${attendance.length} CHECK-INS`;
 }
 
-/**
- * Handle scan result
- */
-function onScanSuccess(decodedText) {
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-  const eventName =
-    document.getElementById("eventSelect").value;
+function findMember(decodedText) {
+  let memberSlug = "";
+
+  try {
+    const url = new URL(decodedText);
+    memberSlug = url.searchParams.get("member");
+  } catch {
+    return null;
+  }
+
+  if (!memberSlug) {
+    return null;
+  }
+
+  return MEMBERS.find(member => {
+    const fullSlug = slugify(`${member.firstName}-${member.surname}`);
+    return fullSlug === memberSlug;
+  });
+}
+
+function onScanSuccess(decodedText) {
+  const eventName = document.getElementById("eventSelect").value;
 
   if (!eventName) {
     setStatus("SELECT EVENT", "error");
     return;
   }
 
-  const exists = attendance.some(
-    x => x.memberId === decodedText && x.event === eventName
+  const member = findMember(decodedText);
+
+  if (!member) {
+    setStatus("INVALID MEMBER QR", "error");
+    return;
+  }
+
+  const fullName = `${member.firstName} ${member.surname}`;
+
+  const exists = attendance.some(entry =>
+    entry.firstName === member.firstName &&
+    entry.surname === member.surname &&
+    entry.event === eventName
   );
 
   if (exists) {
-    setStatus("ALREADY CHECKED IN", "error");
+    setStatus(`ALREADY CHECKED IN<br>${fullName}`, "error");
     return;
   }
 
   attendance.push({
     timestamp: new Date().toLocaleString(),
-    memberId: decodedText,
+    firstName: member.firstName,
+    surname: member.surname,
+    teamName: member.teamName,
     event: eventName
   });
 
   updateCount();
 
-  setStatus(`✅ ${decodedText}`, "success");
+  setStatus(
+    `✅ ${fullName}<br>${member.teamName}`,
+    "success"
+  );
 
   navigator.vibrate?.(120);
 }
 
-/**
- * FORCE BACK CAMERA (FIX)
- */
 function startScanner() {
-
   html5QrCode = new Html5Qrcode("reader");
 
   const config = {
@@ -61,30 +98,15 @@ function startScanner() {
     qrbox: 250
   };
 
-  /**
-   * STEP 1:
-   * Strongly request BACK CAMERA
-   */
-  const cameraConstraints = {
-    facingMode: { exact: "environment" }
-  };
-
   html5QrCode.start(
-    cameraConstraints,
+    { facingMode: { exact: "environment" } },
     config,
     onScanSuccess
   )
   .then(() => {
     setStatus("SCANNING...", "neutral");
   })
-
-  /**
-   * STEP 2: fallback for iOS/Safari restrictions
-   */
-  .catch(err => {
-
-    console.warn("Exact back camera failed, retrying fallback...", err);
-
+  .catch(() => {
     html5QrCode.start(
       { facingMode: "environment" },
       config,
@@ -93,35 +115,28 @@ function startScanner() {
     .then(() => {
       setStatus("SCANNING...", "neutral");
     })
-
-    .catch(err2 => {
-      console.error(err2);
+    .catch(error => {
+      console.error(error);
       setStatus("CAMERA ERROR", "error");
     });
-
   });
 }
 
 startScanner();
 
-/**
- * EXPORT CSV (LOCAL SPREADSHEET OUTPUT)
- */
 exportBtn.addEventListener("click", () => {
-
   if (attendance.length === 0) {
     setStatus("NO DATA", "error");
     return;
   }
 
-  let csv = "Timestamp,Member ID,Event\n";
+  let csv = "Timestamp,First Name,Surname,Team,Event\n";
 
-  attendance.forEach(r => {
-    csv += `${r.timestamp},${r.memberId},${r.event}\n`;
+  attendance.forEach(row => {
+    csv += `"${row.timestamp}","${row.firstName}","${row.surname}","${row.teamName}","${row.event}"\n`;
   });
 
   const blob = new Blob([csv], { type: "text/csv" });
-
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
