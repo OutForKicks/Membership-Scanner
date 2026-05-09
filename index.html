@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>OFK CHECK-IN</title>
+
+  <link rel="preconnect"
+        href="https://fonts.googleapis.com">
+
+  <link rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+</head>
+
+<body>
+
+  <div class="overlay"></div>
+
+  <div class="container">
+
+    <img src="assets/ofk-logo.png"
+         class="logo">
+
+    <h1>EVENT CHECK-IN</h1>
+
+    <input
+      type="text"
+      id="eventName"
+      placeholder="ENTER EVENT NAME">
+
+    <div id="reader"></div>
+
+    <div id="status"></div>
+
+  </div>
+
+  <script src="app.js"></script>
+
+</body>
+</html>
