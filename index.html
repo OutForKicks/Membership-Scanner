@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 
   <meta charset="UTF-8">
+
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0">
 
-  <title>OFK CHECK-IN</title>
+  <title>OFK Event Check-In</title>
 
   <link rel="preconnect"
         href="https://fonts.googleapis.com">
@@ -18,7 +20,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
         rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet"
+        href="style.css">
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -26,27 +29,53 @@
 
 <body>
 
-  <div class="overlay"></div>
-
   <div class="container">
 
     <img src="assets/ofk-logo.png"
-         class="logo">
+         class="logo"
+         alt="OFK Logo">
 
     <h1>EVENT CHECK-IN</h1>
 
-    <input
-      type="text"
-      id="eventName"
-      placeholder="ENTER EVENT NAME">
+    <select id="eventSelect">
+
+      <option value="">
+        SELECT EVENT
+      </option>
+
+      <option value="Pride Mixer">
+        PRIDE MIXER
+      </option>
+
+      <option value="Sunday Social">
+        SUNDAY SOCIAL
+      </option>
+
+      <option value="Spring Tournament">
+        SPRING TOURNAMENT
+      </option>
+
+    </select>
 
     <div id="reader"></div>
 
-    <div id="status"></div>
+    <div id="status"
+         class="neutral">
+      READY TO SCAN
+    </div>
+
+    <div id="scanCount">
+      0 CHECK-INS
+    </div>
+
+    <button id="exportBtn">
+      EXPORT CSV
+    </button>
 
   </div>
 
   <script src="app.js"></script>
 
 </body>
+
 </html>
