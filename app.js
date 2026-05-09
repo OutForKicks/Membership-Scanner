@@ -1,10 +1,13 @@
-const SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_URL";
-
 const statusDiv =
   document.getElementById("status");
 
-statusDiv.className = "neutral";
-statusDiv.innerHTML = "READY TO SCAN";
+const scanCountDiv =
+  document.getElementById("scanCount");
+
+const exportBtn =
+  document.getElementById("exportBtn");
+
+let attendance = [];
 
 function setStatus(message, type) {
 
@@ -12,61 +15,66 @@ function setStatus(message, type) {
   statusDiv.innerHTML = message;
 }
 
+function updateCount() {
+
+  scanCountDiv.innerHTML =
+    `${attendance.length} CHECK-INS`;
+}
+
 function onScanSuccess(decodedText) {
 
   const eventName =
-    document.getElementById("eventName").value;
+    document.getElementById("eventSelect").value;
 
   if (!eventName) {
 
     setStatus(
-      "ENTER EVENT NAME",
+      "SELECT EVENT",
       "error"
     );
 
     return;
   }
 
-  fetch(SCRIPT_URL, {
-    method: "POST",
+  const alreadyExists =
+    attendance.some(
+      entry =>
+        entry.memberId === decodedText &&
+        entry.event === eventName
+    );
 
-    body: JSON.stringify({
-      memberId: decodedText,
-      eventName: eventName
-    })
-  })
-
-  .then(response => response.json())
-
-  .then(data => {
-
-    if (data.success) {
-
-      setStatus(
-        `✅ ${data.name}`,
-        "success"
-      );
-
-      navigator.vibrate?.(120);
-
-    } else {
-
-      setStatus(
-        `⚠️ ${data.message}`,
-        "error"
-      );
-    }
-  })
-
-  .catch(error => {
-
-    console.error(error);
+  if (alreadyExists) {
 
     setStatus(
-      "SERVER ERROR",
+      "ALREADY CHECKED IN",
       "error"
     );
-  });
+
+    return;
+  }
+
+  const entry = {
+
+    timestamp:
+      new Date().toLocaleString(),
+
+    memberId:
+      decodedText,
+
+    event:
+      eventName
+  };
+
+  attendance.push(entry);
+
+  updateCount();
+
+  setStatus(
+    `✅ ${decodedText}`,
+    "success"
+  );
+
+  navigator.vibrate?.(120);
 }
 
 const scanner =
@@ -79,3 +87,54 @@ const scanner =
   );
 
 scanner.render(onScanSuccess);
+
+exportBtn.addEventListener(
+  "click",
+  () => {
+
+    if (attendance.length === 0) {
+
+      setStatus(
+        "NO DATA TO EXPORT",
+        "error"
+      );
+
+      return;
+    }
+
+    let csv =
+      "Timestamp,Member ID,Event\n";
+
+    attendance.forEach(row => {
+
+      csv +=
+        `${row.timestamp},${row.memberId},${row.event}\n`;
+    });
+
+    const blob =
+      new Blob(
+        [csv],
+        { type: "text/csv" }
+      );
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const a =
+      document.createElement("a");
+
+    a.href = url;
+
+    a.download =
+      "ofk-attendance.csv";
+
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+
+    setStatus(
+      "CSV EXPORTED",
+      "success"
+    );
+  }
+);
