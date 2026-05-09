@@ -55,9 +55,16 @@ function onScanSuccess(decodedText) {
   const member = findMember(decodedText);
 
   if (!member) {
-    setStatus("INVALID MEMBER QR", "error");
-    return;
-  }
+
+  console.log(decodedText);
+
+  setStatus(
+    decodedText,
+    "error"
+  );
+
+  return;
+}
 
   const fullName = `${member.firstName} ${member.surname}`;
 
