@@ -1,36 +1,47 @@
 const statusDiv = document.getElementById("status");
 const scanCountDiv = document.getElementById("scanCount");
 const exportBtn = document.getElementById("exportBtn");
+const newEventBtn = document.getElementById("newEventBtn");
 
-let attendance = [];
+let attendance =
+  JSON.parse(localStorage.getItem("ofkAttendance")) || [];
+
 let html5QrCode;
 
-/**
- * STATUS UI
- */
+function saveAttendance() {
+  localStorage.setItem(
+    "ofkAttendance",
+    JSON.stringify(attendance)
+  );
+}
+
 function setStatus(message, type) {
   statusDiv.className = type;
   statusDiv.innerHTML = message;
 }
 
-/**
- * UPDATE COUNT
- */
-function updateCount() {
-  scanCountDiv.innerHTML =
-    `${attendance.length} CHECK-INS`;
+function getSelectedEvent() {
+  return document.getElementById("eventSelect").value;
 }
 
-/**
- * PARSE MEMBER FROM QR
- *
- * Expected QR format:
- * https://outforkicks.github.io/2026-OFK-Member/?MEMBER=AARON|GILL|SOLVE
- */
+function updateCount() {
+  const eventName = getSelectedEvent();
+
+  if (!eventName) {
+    scanCountDiv.innerHTML = "0 CHECK-INS";
+    return;
+  }
+
+  const eventCount = attendance.filter(
+    row => row.event === eventName
+  ).length;
+
+  scanCountDiv.innerHTML =
+    `${eventCount} CHECK-INS`;
+}
+
 function findMember(decodedText) {
-
   try {
-
     const url = new URL(decodedText);
 
     const rawMember =
@@ -42,8 +53,7 @@ function findMember(decodedText) {
     }
 
     const parts =
-      decodeURIComponent(rawMember)
-      .split("|");
+      decodeURIComponent(rawMember).split("|");
 
     if (parts.length < 3) {
       return null;
@@ -56,83 +66,53 @@ function findMember(decodedText) {
     };
 
   } catch {
-
     return null;
   }
 }
 
-/**
- * HANDLE QR SCAN
- */
 function onScanSuccess(decodedText) {
-
-  const eventName =
-    document.getElementById("eventSelect").value;
+  const eventName = getSelectedEvent();
 
   if (!eventName) {
-
-    setStatus(
-      "SELECT EVENT",
-      "error"
-    );
-
+    setStatus("SELECT EVENT", "error");
     return;
   }
 
-  const member =
-    findMember(decodedText);
+  const member = findMember(decodedText);
 
   if (!member) {
-
-    setStatus(
-      "INVALID MEMBER QR",
-      "error"
-    );
-
+    setStatus("INVALID MEMBER QR", "error");
     console.log(decodedText);
-
     return;
   }
 
   const fullName =
     `${member.firstName} ${member.surname}`;
 
-  const exists =
-    attendance.some(entry =>
-
-      entry.firstName === member.firstName &&
-      entry.surname === member.surname &&
-      entry.event === eventName
-    );
+  const exists = attendance.some(entry =>
+    entry.firstName === member.firstName &&
+    entry.surname === member.surname &&
+    entry.teamName === member.teamName &&
+    entry.event === eventName
+  );
 
   if (exists) {
-
     setStatus(
       `ALREADY CHECKED IN<br>${fullName}`,
       "error"
     );
-
     return;
   }
 
   attendance.push({
-
-    timestamp:
-      new Date().toLocaleString(),
-
-    firstName:
-      member.firstName,
-
-    surname:
-      member.surname,
-
-    teamName:
-      member.teamName,
-
-    event:
-      eventName
+    timestamp: new Date().toLocaleString(),
+    firstName: member.firstName,
+    surname: member.surname,
+    teamName: member.teamName,
+    event: eventName
   });
 
+  saveAttendance();
   updateCount();
 
   setStatus(
@@ -143,14 +123,8 @@ function onScanSuccess(decodedText) {
   navigator.vibrate?.(120);
 }
 
-/**
- * START SCANNER
- * FORCE BACK CAMERA
- */
 function startScanner() {
-
-  html5QrCode =
-    new Html5Qrcode("reader");
+  html5QrCode = new Html5Qrcode("reader");
 
   const config = {
     fps: 10,
@@ -158,111 +132,72 @@ function startScanner() {
   };
 
   html5QrCode.start(
-
-    {
-      facingMode: {
-        exact: "environment"
-      }
-    },
-
+    { facingMode: { exact: "environment" } },
     config,
-
     onScanSuccess
   )
-
   .then(() => {
-
-    setStatus(
-      "SCANNING...",
-      "neutral"
-    );
+    setStatus("SCANNING...", "neutral");
   })
-
   .catch(() => {
-
     html5QrCode.start(
-
-      {
-        facingMode: "environment"
-      },
-
+      { facingMode: "environment" },
       config,
-
       onScanSuccess
     )
-
     .then(() => {
-
-      setStatus(
-        "SCANNING...",
-        "neutral"
-      );
+      setStatus("SCANNING...", "neutral");
     })
-
     .catch(error => {
-
       console.error(error);
-
-      setStatus(
-        "CAMERA ERROR",
-        "error"
-      );
+      setStatus("CAMERA ERROR", "error");
     });
   });
 }
 
 startScanner();
+updateCount();
 
-/**
- * EXPORT CSV
- */
-exportBtn.addEventListener(
-  "click",
-  () => {
+document
+  .getElementById("eventSelect")
+  .addEventListener("change", () => {
+    updateCount();
+    setStatus("READY TO SCAN", "neutral");
+  });
 
-    if (attendance.length === 0) {
+newEventBtn.addEventListener("click", () => {
+  updateCount();
+  setStatus("READY FOR NEW EVENT", "neutral");
+});
 
-      setStatus(
-        "NO DATA",
-        "error"
-      );
-
-      return;
-    }
-
-    let csv =
-      "Timestamp,First Name,Surname,Team,Event\n";
-
-    attendance.forEach(row => {
-
-      csv +=
-        `"${row.timestamp}","${row.firstName}","${row.surname}","${row.teamName}","${row.event}"\n`;
-    });
-
-    const blob =
-      new Blob(
-        [csv],
-        { type: "text/csv" }
-      );
-
-    const url =
-      URL.createObjectURL(blob);
-
-    const a =
-      document.createElement("a");
-
-    a.href = url;
-
-    a.download =
-      "ofk-attendance.csv";
-
-    a.click();
-
-    URL.revokeObjectURL(url);
-
-    setStatus(
-      "EXPORTED",
-      "success"
-    );
+exportBtn.addEventListener("click", () => {
+  if (attendance.length === 0) {
+    setStatus("NO DATA", "error");
+    return;
   }
-);
+
+  let csv =
+    "Timestamp,First Name,Surname,Team,Event\n";
+
+  attendance.forEach(row => {
+    csv +=
+      `"${row.timestamp}","${row.firstName}","${row.surname}","${row.teamName}","${row.event}"\n`;
+  });
+
+  const blob =
+    new Blob([csv], { type: "text/csv" });
+
+  const url =
+    URL.createObjectURL(blob);
+
+  const a =
+    document.createElement("a");
+
+  a.href = url;
+  a.download = "ofk-attendance-all-events.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+
+  setStatus("EXPORTED", "success");
+});
